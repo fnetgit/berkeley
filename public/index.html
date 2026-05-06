@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sincronização de Berkeley</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="app-shell">
+        <section class="hero-panel">
+            <div class="hero-copy">
+                <p class="eyebrow">Relógios distribuídos</p>
+                <h1>Algoritmo de Berkeley</h1>
+                <p class="hero-text">
+                    Simule o cálculo do clock lógico global, compare os envios originais dos clientes e visualize os
+                    ajustes aplicados após a sincronização.
+                </p>
+            </div>
+            <div class="hero-badge">
+                <span class="hero-badge-label">Clock global</span>
+                <strong id="heroClockValue">--:--:--</strong>
+            </div>
+        </section>
+
+        <section class="workspace-grid">
+            <div class="panel panel-form">
+                <div class="section-heading">
+                    <div>
+                        <p class="section-kicker">Entrada</p>
+                        <h2>Configuração dos nós</h2>
+                    </div>
+                    <span class="pill">Frontend local</span>
+                </div>
+
+                <div class="server-card">
+                    <label for="serverTime">Horário do Servidor</label>
+                    <input type="text" id="serverTime" class="time-input time-input-main" placeholder="HH:MM ou HH:MM:SS" maxlength="8">
+                    <p class="field-hint">
+                        A hora de envio representa o clock lógico do servidor embutido na mensagem. Quando informada,
+                        ela é usada como base do ranking e do cálculo sincronizado.
+                    </p>
+                </div>
+
+                <div class="section-heading clients-heading">
+                    <div>
+                        <p class="section-kicker">Clientes</p>
+                        <h3>Relógios participantes</h3>
+                    </div>
+                    <button id="addClientBtn" class="secondary" type="button">Adicionar cliente</button>
+                </div>
+
+                <div id="clientsContainer" class="clients-list"></div>
+
+                <div class="empty-state" id="clientsEmptyState">
+                    <strong>Nenhum cliente adicionado</strong>
+                    <span>Adicione um ou mais clientes para calcular ajustes e rankings.</span>
+                </div>
+
+                <div id="formStatus" class="status-banner hidden" role="status" aria-live="polite"></div>
+
+                <div class="actions-row">
+                    <button id="syncBtn" class="primary" type="button">Sincronizar relógios</button>
+                </div>
+            </div>
+
+            <div id="resultsSection" class="panel panel-results hidden">
+                <div class="section-heading">
+                    <div>
+                        <p class="section-kicker">Saída</p>
+                        <h2>Resultado da sincronização</h2>
+                    </div>
+                </div>
+
+                <div class="logical-clock-display">
+                    <span class="clock-label">Novo clock lógico global</span>
+                    <strong id="globalClockValue">--:--:--</strong>
+                </div>
+
+                <div class="stats-grid">
+                    <article class="stat-card">
+                        <span class="stat-label">Clientes sincronizados</span>
+                        <strong id="statClientsCount">0</strong>
+                    </article>
+                    <article class="stat-card">
+                        <span class="stat-label">Primeiro envio</span>
+                        <strong id="statFirstSend">--:--:--</strong>
+                    </article>
+                    <article class="stat-card">
+                        <span class="stat-label">Último envio ajustado</span>
+                        <strong id="statLastAdjustedSend">--:--:--</strong>
+                    </article>
+                </div>
+
+                <div class="table-card">
+                    <div class="table-heading">
+                        <div>
+                            <h3>Ajustes necessários</h3>
+                            <p>Ajuste aplicado em cada cliente para convergir para o clock lógico global.</p>
+                        </div>
+                    </div>
+                    <table id="tableAdjustments">
+                        <thead>
+                            <tr>
+                                <th>Nó</th>
+                                <th>Ajuste aplicado</th>
+                                <th>Novo horário local</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="results-grid">
+                    <div class="table-card">
+                        <div class="table-heading">
+                            <div>
+                                <h3>Ranking dos envios não sincronizados</h3>
+                                <p>Ordenação crescente pelas horas de envio informadas.</p>
+                            </div>
+                        </div>
+                        <table id="tableRankingBefore">
+                            <thead>
+                                <tr>
+                                    <th>Posição</th>
+                                    <th>Nó</th>
+                                    <th>Horário</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-card">
+                        <div class="table-heading">
+                            <div>
+                                <h3>Ranking dos envios sincronizados</h3>
+                                <p>Hora de envio somada ao ajuste aplicado em cada cliente.</p>
+                            </div>
+                        </div>
+                        <table id="tableRankingAfter">
+                            <thead>
+                                <tr>
+                                    <th>Posição</th>
+                                    <th>Nó</th>
+                                    <th>Horário</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
