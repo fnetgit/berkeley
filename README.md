@@ -29,13 +29,13 @@ O trabalho foi desenvolvido para a disciplina de **Sistemas Distribuídos (SD)**
 npm install
 ```
 
-2. Rode o projeto em modo de desenvolvimento:
+1. Rode o projeto em modo de desenvolvimento:
 
 ```bash
 npm run dev
 ```
 
-3. Acesse no navegador:
+1. Acesse no navegador:
 
 ```text
 http://localhost:3000
@@ -49,7 +49,7 @@ http://localhost:3000
 npm run build
 ```
 
-2. Inicie o servidor compilado:
+1. Inicie o servidor compilado:
 
 ```bash
 npm start
