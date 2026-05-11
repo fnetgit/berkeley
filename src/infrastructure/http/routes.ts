@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { SyncClocksUseCase } from '../../application/use-cases/sync-clocks-use-case.js';
+import { ClockValidationError, NodeClock } from '../../domain/entities/clock.js';
 
 const clockSchema = z.object({
   id: z.string(),
@@ -8,14 +9,6 @@ const clockSchema = z.object({
   currentTimeMs: z.number(),
   isServer: z.boolean(),
   sentAtMs: z.number().optional()
-}).superRefine((clock, ctx) => {
-  if (!clock.isServer && typeof clock.sentAtMs === 'number' && clock.sentAtMs < clock.currentTimeMs) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Hora de envio não pode ser menor que a hora local.',
-      path: ['sentAtMs']
-    });
-  }
 });
 
 const syncRequestSchema = z.object({
@@ -23,8 +16,14 @@ const syncRequestSchema = z.object({
   clients: z.array(clockSchema)
 });
 
-export async function clockRoutes(fastify: FastifyInstance) {
-  const syncUseCase = new SyncClocksUseCase();
+export interface ClockRoutesDependencies {
+  syncUseCase: SyncClocksUseCase;
+}
+
+export async function clockRoutes(
+  fastify: FastifyInstance,
+  { syncUseCase }: ClockRoutesDependencies
+) {
 
   fastify.post('/sync', async (request, reply) => {
     const parseResult = syncRequestSchema.safeParse(request.body);
@@ -33,9 +32,18 @@ export async function clockRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'Dados inválidos', details: parseResult.error.format() });
     }
 
-    const { server, clients } = parseResult.data;
-    const result = syncUseCase.execute(server, clients);
+    try {
+      const server = NodeClock.create(parseResult.data.server);
+      const clients = parseResult.data.clients.map((client) => NodeClock.create(client));
+      const result = syncUseCase.execute(server, clients);
 
-    return result;
+      return result;
+    } catch (error) {
+      if (error instanceof ClockValidationError) {
+        return reply.status(400).send({ error: 'Dados inválidos', details: error.message });
+      }
+
+      throw error;
+    }
   });
 }

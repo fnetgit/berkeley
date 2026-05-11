@@ -1,5 +1,5 @@
 import { NodeClock, SyncResult } from '../../domain/entities/clock.js';
-import { BerkeleyAlgorithm } from '../../domain/services/berkeley-algorithm.js';
+import { ClockSyncService } from '../../domain/services/clock-sync-service.js';
 
 export interface SyncResponse {
   results: SyncResult[];
@@ -8,8 +8,10 @@ export interface SyncResponse {
 }
 
 export class SyncClocksUseCase {
+  constructor(private readonly clockSyncService: ClockSyncService) {}
+
   execute(server: NodeClock, clients: NodeClock[]): SyncResponse {
-    const results = BerkeleyAlgorithm.synchronize(server, clients);
+    const results = this.clockSyncService.synchronize(server, clients);
 
     // Ranking antes: horas de envio em ordem crescente
     const rankingBefore = [...results].sort((a, b) => compareOptionalTimes(a.sendTimeMs, b.sendTimeMs));

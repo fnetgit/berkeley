@@ -1,80 +1,111 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sincronização de Berkeley</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <main class="app-shell">
-        <section class="hero-panel">
-            <div class="hero-copy">
-                <p class="eyebrow">Relógios distribuídos</p>
-                <h1>Algoritmo de Berkeley</h1>
+        <section class="masthead">
+            <div class="masthead-copy">
+                <p class="eyebrow">Sistemas distribuídos</p>
+                <h1>Sincronização com o algoritmo de Berkeley</h1>
                 <p class="hero-text">
-                    Simule o cálculo do clock lógico global, compare os envios originais dos clientes e visualize os
-                    ajustes aplicados após a sincronização.
+                    Organize os relógios em fluxo contínuo, execute a rodada de sincronização e compare o sistema antes
+                    e depois do ajuste sem perder o contexto.
                 </p>
             </div>
-            <div class="hero-badge">
-                <span class="hero-badge-label">Clock global</span>
-                <strong id="heroClockValue">--:--:--</strong>
+            <div class="masthead-side">
+                <div class="reference-card">
+                    <div>
+                        <p class="mini-kicker">Servidor</p>
+                        <label for="serverTime">Horário de referência</label>
+                    </div>
+                    <input type="text" id="serverTime" class="time-input time-input-main"
+                        placeholder="HH:MM ou HH:MM:SS" maxlength="8">
+                    <p class="field-hint">
+                        Defina aqui o relógio base da rodada antes de preencher os clientes.
+                    </p>
+                </div>
             </div>
         </section>
 
         <section class="workspace-grid">
-            <div class="panel panel-form">
-                <div class="section-heading">
+            <section class="panel panel-form">
+                <div class="panel-heading">
                     <div>
-                        <p class="section-kicker">Entrada</p>
-                        <h2>Configuração dos nós</h2>
+                        <p class="section-kicker">Configuração</p>
+                        <h2>Monte os nós</h2>
                     </div>
-                    <span class="pill">Frontend local</span>
+                    <span class="pill">Etapa 1</span>
                 </div>
 
-                <div class="server-card">
-                    <label for="serverTime">Horário do Servidor</label>
-                    <input type="text" id="serverTime" class="time-input time-input-main" placeholder="HH:MM ou HH:MM:SS" maxlength="8">
-                    <p class="field-hint">
-                        A hora de envio representa o clock lógico do servidor embutido na mensagem. Quando informada,
-                        ela é usada como base do ranking e do cálculo sincronizado.
+                <p class="field-hint form-intro">
+                    Adicione os clientes participantes e, quando existir, informe também o horário de envio associado
+                    a cada um deles.
+                </p>
+
+                <div class="clients-section">
+                    <div class="clients-header">
+                        <div>
+                            <p class="section-kicker">Clientes</p>
+                            <h3>Adicione os participantes</h3>
+                        </div>
+                        <span id="clientsCountPill" class="pill">0 clientes</span>
+                    </div>
+
+                    <p class="section-note">
+                        O próximo cliente sempre aparece no final da lista com foco direto para edição.
                     </p>
-                </div>
 
-                <div class="section-heading clients-heading">
-                    <div>
-                        <p class="section-kicker">Clientes</p>
-                        <h3>Relógios participantes</h3>
+                    <div class="clients-workspace">
+                        <div id="clientsContainer" class="clients-list"></div>
+
+                        <div class="empty-state" id="clientsEmptyState">
+                            <strong>Nenhum cliente adicionado</strong>
+                            <span>Crie o primeiro cliente para iniciar a simulação.</span>
+                        </div>
+
+                        <div class="add-client-dock">
+                            <button id="addClientBtn" class="secondary add-client-btn" type="button">Adicionar
+                                cliente</button>
+                        </div>
                     </div>
-                    <button id="addClientBtn" class="secondary" type="button">Adicionar cliente</button>
-                </div>
-
-                <div id="clientsContainer" class="clients-list"></div>
-
-                <div class="empty-state" id="clientsEmptyState">
-                    <strong>Nenhum cliente adicionado</strong>
-                    <span>Adicione um ou mais clientes para calcular ajustes e rankings.</span>
                 </div>
 
                 <div id="formStatus" class="status-banner hidden" role="status" aria-live="polite"></div>
 
                 <div class="actions-row">
+                    <div class="actions-copy">
+                        <p class="mini-kicker">Execução</p>
+                        <span>Quando a lista estiver pronta, processe a sincronização.</span>
+                    </div>
                     <button id="syncBtn" class="primary" type="button">Sincronizar relógios</button>
                 </div>
-            </div>
+            </section>
 
-            <div id="resultsSection" class="panel panel-results hidden">
-                <div class="section-heading">
+            <section id="resultsSection" class="panel panel-results hidden">
+                <div class="panel-heading">
                     <div>
-                        <p class="section-kicker">Saída</p>
-                        <h2>Resultado da sincronização</h2>
+                        <p class="section-kicker">Resultado</p>
+                        <h2>Leitura da sincronização</h2>
                     </div>
+                    <span class="pill">Etapa 2</span>
                 </div>
 
                 <div class="logical-clock-display">
-                    <span class="clock-label">Novo clock lógico global</span>
-                    <strong id="globalClockValue">--:--:--</strong>
+                    <div>
+                        <span class="clock-label">Novo clock lógico global</span>
+                        <strong id="globalClockValue">--:--:--</strong>
+                    </div>
+                    <p>
+                        Este valor resume a referência comum calculada a partir das diferenças válidas entre servidor e
+                        clientes.
+                    </p>
                 </div>
 
                 <div class="stats-grid">
@@ -92,67 +123,70 @@
                     </article>
                 </div>
 
-                <div class="table-card">
-                    <div class="table-heading">
-                        <div>
-                            <h3>Ajustes necessários</h3>
-                            <p>Ajuste aplicado em cada cliente para convergir para o clock lógico global.</p>
-                        </div>
-                    </div>
-                    <table id="tableAdjustments">
-                        <thead>
-                            <tr>
-                                <th>Nó</th>
-                                <th>Ajuste aplicado</th>
-                                <th>Novo horário local</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-
-                <div class="results-grid">
+                <div class="results-stack">
                     <div class="table-card">
                         <div class="table-heading">
                             <div>
-                                <h3>Ranking dos envios não sincronizados</h3>
-                                <p>Ordenação crescente pelas horas de envio informadas.</p>
+                                <h3>Ajustes por cliente</h3>
+                                <p>Veja quanto cada relógio precisou avançar ou atrasar para convergir.</p>
                             </div>
                         </div>
-                        <table id="tableRankingBefore">
+                        <table id="tableAdjustments">
                             <thead>
                                 <tr>
-                                    <th>Posição</th>
                                     <th>Nó</th>
-                                    <th>Horário</th>
+                                    <th>Ajuste aplicado</th>
+                                    <th>Novo horário local</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
                         </table>
                     </div>
 
-                    <div class="table-card">
-                        <div class="table-heading">
-                            <div>
-                                <h3>Ranking dos envios sincronizados</h3>
-                                <p>Hora de envio somada ao ajuste aplicado em cada cliente.</p>
+                    <div class="results-grid">
+                        <div class="table-card">
+                            <div class="table-heading">
+                                <div>
+                                    <h3>Ordem original dos envios</h3>
+                                    <p>Sequência observada antes da correção dos relógios.</p>
+                                </div>
                             </div>
+                            <table id="tableRankingBefore">
+                                <thead>
+                                    <tr>
+                                        <th>Posição</th>
+                                        <th>Nó</th>
+                                        <th>Horário</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
                         </div>
-                        <table id="tableRankingAfter">
-                            <thead>
-                                <tr>
-                                    <th>Posição</th>
-                                    <th>Nó</th>
-                                    <th>Horário</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+
+                        <div class="table-card">
+                            <div class="table-heading">
+                                <div>
+                                    <h3>Ordem após sincronização</h3>
+                                    <p>Sequência recalculada depois do ajuste aplicado.</p>
+                                </div>
+                            </div>
+                            <table id="tableRankingAfter">
+                                <thead>
+                                    <tr>
+                                        <th>Posição</th>
+                                        <th>Nó</th>
+                                        <th>Horário</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </section>
         </section>
     </main>
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
+
 </html>

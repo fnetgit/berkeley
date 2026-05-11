@@ -1,21 +1,186 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const STORAGE_KEY = 'berkeley-form-state-v1';
-    const clientsContainer = document.getElementById('clientsContainer');
-    const clientsEmptyState = document.getElementById('clientsEmptyState');
-    const addClientBtn = document.getElementById('addClientBtn');
-    const syncBtn = document.getElementById('syncBtn');
-    const resultsSection = document.getElementById('resultsSection');
-    const formStatus = document.getElementById('formStatus');
-    const heroClockValue = document.getElementById('heroClockValue');
+const STORAGE_KEY = 'berkeley-form-state-v1';
 
-    addClientBtn.addEventListener('click', addClient);
-    document.querySelectorAll('.time-input').forEach(applyTimeMask);
+export function parseTimeToMs(timeStr, fieldLabel) {
+    const match = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(timeStr);
+    if (!match) {
+        throw new Error(`${fieldLabel} deve estar no formato HH:MM ou HH:MM:SS.`);
+    }
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = Number(match[3] || '00');
+
+    if (hours > 23 || minutes > 59 || seconds > 59) {
+        throw new Error(`${fieldLabel} contem um horario invalido.`);
+    }
+
+    return ((hours * 60 + minutes) * 60 + seconds) * 1000;
+}
+
+export function msToTimeString(ms) {
+    const dayMs = 24 * 60 * 60 * 1000;
+    const normalizedMs = ((Math.round(ms) % dayMs) + dayMs) % dayMs;
+    const totalSeconds = Math.floor(normalizedMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    return [
+        String(hours).padStart(2, '0'),
+        String(minutes).padStart(2, '0'),
+        String(seconds).padStart(2, '0')
+    ].join(':');
+}
+
+export function formatAdjustment(ms) {
+    if (ms === 0) return '0 s';
+
+    const sign = ms < 0 ? '-' : '+';
+    const absMs = Math.abs(ms);
+    const totalSeconds = Math.floor(absMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+        return minutes > 0
+            ? `${sign}${hours} h ${minutes} min`
+            : `${sign}${hours} h`;
+    }
+
+    if (minutes > 0) {
+        return seconds > 0
+            ? `${sign}${minutes} min ${seconds} s`
+            : `${sign}${minutes} min`;
+    }
+
+    return `${sign}${seconds} s`;
+}
+
+export function formatRankingTime(ms) {
+    if (!Number.isFinite(ms)) {
+        return '--:--:--';
+    }
+
+    return msToTimeString(ms);
+}
+
+export function getUserFacingErrorMessage(error) {
+    if (error instanceof Error) {
+        if (error.message.includes('Cannot set properties of null') || error.message.includes('Cannot read properties of null')) {
+            return 'A interface ficou inconsistente depois da última alteração. Recarregue a página e tente novamente.';
+        }
+
+        return error.message;
+    }
+
+    return 'Ocorreu um erro inesperado na interface. Recarregue a página e tente novamente.';
+}
+
+function getRequiredElement(root, id, label) {
+    const element = root.getElementById(id);
+
+    if (!element) {
+        throw new Error(`A interface não carregou corretamente (${label}). Recarregue a página.`);
+    }
+
+    return element;
+}
+
+function getRequiredBody(root, selector, label) {
+    const element = root.querySelector(selector);
+
+    if (!element) {
+        throw new Error(`A interface não carregou corretamente (${label}). Recarregue a página.`);
+    }
+
+    return element;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function renderRankingTable(tableBody, ranking, getTimeValue) {
+    tableBody.innerHTML = ranking.map((res, index) => `
+        <tr>
+            <td>${index + 1}</td>
+            <td>${res.name}</td>
+            <td>${formatRankingTime(getTimeValue(res))}</td>
+        </tr>
+    `).join('');
+}
+
+export function renderSyncResults(view, data) {
+    if (!data.results || data.results.length === 0) {
+        throw new Error('Resposta sem resultados de sincronizacao.');
+    }
+
+    view.resultsSection.classList.remove('hidden');
+
+    const globalTimeMs = data.results[0].synchronizedTimeMs;
+    view.globalClockValue.textContent = msToTimeString(globalTimeMs);
+
+    if (view.heroClockValue) {
+        view.heroClockValue.textContent = msToTimeString(globalTimeMs);
+    }
+
+    const clientResults = data.results.filter((res) => !res.isServer);
+    const rankings = {
+        before: Array.isArray(data.rankingBefore) ? data.rankingBefore.filter((res) => !res.isServer) : [],
+        after: Array.isArray(data.rankingAfter) ? data.rankingAfter.filter((res) => !res.isServer) : []
+    };
+    const firstSend = rankings.before.find((item) => Number.isFinite(item.sendTimeMs));
+    const lastAdjusted = [...rankings.after].reverse().find((item) => Number.isFinite(item.synchronizedSendTimeMs));
+
+    view.statClientsCount.textContent = String(clientResults.length);
+    view.statFirstSend.textContent = formatRankingTime(firstSend?.sendTimeMs);
+    view.statLastAdjustedSend.textContent = formatRankingTime(lastAdjusted?.synchronizedSendTimeMs);
+
+    view.tableAdjustments.innerHTML = clientResults.map((res) => `
+        <tr>
+            <td>${res.name}</td>
+            <td>${formatAdjustment(res.adjustmentMs)}</td>
+            <td>${msToTimeString(res.synchronizedTimeMs)}</td>
+        </tr>
+    `).join('');
+
+    renderRankingTable(view.tableRankingBefore, rankings.before, (res) => res.sendTimeMs);
+    renderRankingTable(view.tableRankingAfter, rankings.after, (res) => res.synchronizedSendTimeMs);
+}
+
+export function initializeApp(root = document) {
+    const elements = {
+        clientsContainer: getRequiredElement(root, 'clientsContainer', 'lista de clientes'),
+        clientsEmptyState: getRequiredElement(root, 'clientsEmptyState', 'estado vazio de clientes'),
+        clientsCountPill: getRequiredElement(root, 'clientsCountPill', 'contador de clientes'),
+        addClientBtn: getRequiredElement(root, 'addClientBtn', 'botão de adicionar cliente'),
+        syncBtn: getRequiredElement(root, 'syncBtn', 'botão de sincronização'),
+        resultsSection: getRequiredElement(root, 'resultsSection', 'painel de resultados'),
+        formStatus: getRequiredElement(root, 'formStatus', 'área de mensagens'),
+        serverTime: getRequiredElement(root, 'serverTime', 'campo de horário do servidor'),
+        globalClockValue: getRequiredElement(root, 'globalClockValue', 'clock global'),
+        statClientsCount: getRequiredElement(root, 'statClientsCount', 'contador de clientes sincronizados'),
+        statFirstSend: getRequiredElement(root, 'statFirstSend', 'primeiro envio'),
+        statLastAdjustedSend: getRequiredElement(root, 'statLastAdjustedSend', 'último envio ajustado'),
+        tableAdjustments: getRequiredBody(root, '#tableAdjustments tbody', 'tabela de ajustes'),
+        tableRankingBefore: getRequiredBody(root, '#tableRankingBefore tbody', 'ranking original'),
+        tableRankingAfter: getRequiredBody(root, '#tableRankingAfter tbody', 'ranking sincronizado'),
+        heroClockValue: root.getElementById('heroClockValue')
+    };
+
+    elements.addClientBtn.addEventListener('click', addClient);
+    root.querySelectorAll('.time-input').forEach(applyTimeMask);
     restoreFormState();
     updateClientsEmptyState();
 
-    document.getElementById('serverTime').addEventListener('input', saveFormState);
+    elements.serverTime.addEventListener('input', saveFormState);
 
-    syncBtn.addEventListener('click', async () => {
+    elements.syncBtn.addEventListener('click', async () => {
         try {
             clearStatus();
             setBusyState(true);
@@ -27,27 +192,32 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                throw new Error('Falha ao sincronizar os relogios.');
+                throw new Error('Não foi possível sincronizar os relógios. Verifique os dados informados e tente novamente.');
             }
 
             const data = await response.json();
-            displayResults(data, payload);
+            renderSyncResults(elements, data);
             showStatus('Sincronização concluída com sucesso.', 'success');
         } catch (error) {
             console.error('Erro ao sincronizar:', error);
-            showStatus(error.message || 'Erro ao conectar com o servidor.', 'error');
+            showStatus(getUserFacingErrorMessage(error), 'error');
         } finally {
             setBusyState(false);
         }
     });
 
-    function addClient(clientData = {}) {
-        const currentClients = clientsContainer.querySelectorAll('.client-input').length;
+    function addClient(clientData = {}, options = {}) {
+        const {
+            shouldFocus = true,
+            shouldScroll = true,
+            shouldSave = true
+        } = options;
+        const currentClients = elements.clientsContainer.querySelectorAll('.client-input').length;
         const clientName = clientData.name || `Cliente ${currentClients + 1}`;
         const localTime = clientData.localTime || '';
         const hasSendTime = Boolean(clientData.hasSendTime);
         const sendTime = clientData.sendTime || '';
-        const div = document.createElement('div');
+        const div = root.createElement('div');
         div.className = 'client-input';
         div.innerHTML = `
             <div class="client-topbar">
@@ -69,11 +239,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span>Informar hora de envio</span>
             </label>
         `;
-        clientsContainer.appendChild(div);
+        elements.clientsContainer.appendChild(div);
         div.querySelectorAll('.time-input').forEach(applyTimeMask);
         bindClientEvents(div);
-        saveFormState();
         updateClientsEmptyState();
+
+        if (shouldSave) {
+            saveFormState();
+        }
+
+        if (shouldFocus) {
+            focusClientCard(div, shouldScroll);
+        }
     }
 
     function applyTimeMask(input) {
@@ -113,8 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function saveFormState() {
         const state = {
-            serverTime: document.getElementById('serverTime').value.trim(),
-            clients: Array.from(document.querySelectorAll('.client-input')).map((div) => ({
+            serverTime: elements.serverTime.value.trim(),
+            clients: Array.from(root.querySelectorAll('.client-input')).map((div) => ({
                 name: div.querySelector('input[type="text"]').value.trim(),
                 localTime: div.querySelector('.time-input').value.trim(),
                 hasSendTime: div.querySelector('.send-time-checkbox').checked,
@@ -126,7 +303,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateClientsEmptyState() {
-        clientsEmptyState.classList.toggle('hidden', clientsContainer.children.length > 0);
+        const count = elements.clientsContainer.children.length;
+        elements.clientsEmptyState.classList.toggle('hidden', count > 0);
+        elements.clientsCountPill.textContent = `${count} ${count === 1 ? 'cliente' : 'clientes'}`;
     }
 
     function restoreFormState() {
@@ -138,28 +317,49 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const state = JSON.parse(rawState);
             if (typeof state.serverTime === 'string') {
-                document.getElementById('serverTime').value = state.serverTime;
+                elements.serverTime.value = state.serverTime;
             }
 
             if (Array.isArray(state.clients)) {
-                state.clients.forEach((client) => addClient(client));
+                state.clients.forEach((client) => addClient(client, {
+                    shouldFocus: false,
+                    shouldScroll: false,
+                    shouldSave: false
+                }));
             }
+
+            updateClientsEmptyState();
         } catch (error) {
             console.warn('Nao foi possivel restaurar o cache do formulario.', error);
             localStorage.removeItem(STORAGE_KEY);
         }
     }
 
-    function escapeHtml(value) {
-        return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
+    function focusClientCard(card, shouldScroll) {
+        card.classList.add('is-new');
+        const targetField = card.querySelector('.client-name') || card.querySelector('.time-input');
+
+        if (targetField) {
+            requestAnimationFrame(() => {
+                targetField.focus();
+                targetField.select?.();
+            });
+        }
+
+        if (shouldScroll) {
+            card.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }
+
+        window.setTimeout(() => {
+            card.classList.remove('is-new');
+        }, 1800);
     }
 
     function buildPayload() {
-        const serverTimeStr = document.getElementById('serverTime').value.trim();
+        const serverTimeStr = elements.serverTime.value.trim();
         const serverTimeMs = parseTimeToMs(serverTimeStr, 'Horário do Servidor');
 
         const server = {
@@ -169,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
             isServer: true
         };
 
-        const clients = Array.from(document.querySelectorAll('.client-input')).map((div, index) => {
+        const clients = Array.from(root.querySelectorAll('.client-input')).map((div, index) => {
             const nameInput = div.querySelector('input[type="text"]');
             const localTimeInput = div.querySelector('.time-input');
             const hasSendTime = div.querySelector('.send-time-checkbox').checked;
@@ -195,158 +395,46 @@ document.addEventListener('DOMContentLoaded', () => {
         return { server, clients };
     }
 
-    function parseTimeToMs(timeStr, fieldLabel) {
-        const match = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(timeStr);
-        if (!match) {
-            throw new Error(`${fieldLabel} deve estar no formato HH:MM ou HH:MM:SS.`);
-        }
-
-        const hours = Number(match[1]);
-        const minutes = Number(match[2]);
-        const seconds = Number(match[3] || '00');
-
-        if (hours > 23 || minutes > 59 || seconds > 59) {
-            throw new Error(`${fieldLabel} contem um horario invalido.`);
-        }
-
-        return ((hours * 60 + minutes) * 60 + seconds) * 1000;
-    }
-
-    function msToTimeString(ms) {
-        const dayMs = 24 * 60 * 60 * 1000;
-        const normalizedMs = ((Math.round(ms) % dayMs) + dayMs) % dayMs;
-        const totalSeconds = Math.floor(normalizedMs / 1000);
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-
-        return [
-            String(hours).padStart(2, '0'),
-            String(minutes).padStart(2, '0'),
-            String(seconds).padStart(2, '0')
-        ].join(':');
-    }
-
-    function formatAdjustment(ms) {
-        if (ms === 0) return '0 s';
-
-        const sign = ms < 0 ? '-' : '+';
-        const absMs = Math.abs(ms);
-        const totalSeconds = Math.floor(absMs / 1000);
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-
-        if (hours > 0) {
-            return minutes > 0
-                ? `${sign}${hours} h ${minutes} min`
-                : `${sign}${hours} h`;
-        }
-
-        if (minutes > 0) {
-            return seconds > 0
-                ? `${sign}${minutes} min ${seconds} s`
-                : `${sign}${minutes} min`;
-        }
-
-        return `${sign}${seconds} s`;
-    }
-
-    function displayResults(data, payload) {
-        if (!data.results || data.results.length === 0) {
-            throw new Error('Resposta sem resultados de sincronizacao.');
-        }
-
-        resultsSection.classList.remove('hidden');
-
-        const globalTimeMs = data.results[0].synchronizedTimeMs;
-        document.getElementById('globalClockValue').textContent = msToTimeString(globalTimeMs);
-        heroClockValue.textContent = msToTimeString(globalTimeMs);
-
-        const clientResults = data.results.filter((res) => !res.isServer);
-        const rankings = buildClientRankings(clientResults, payload.clients);
-        const firstSend = rankings.before.find((item) => Number.isFinite(item.sendTimeMs));
-        const lastAdjusted = [...rankings.after].reverse().find((item) => Number.isFinite(item.synchronizedSendTimeMs));
-
-        document.getElementById('statClientsCount').textContent = String(clientResults.length);
-        document.getElementById('statFirstSend').textContent = formatRankingTime(firstSend?.sendTimeMs);
-        document.getElementById('statLastAdjustedSend').textContent = formatRankingTime(lastAdjusted?.synchronizedSendTimeMs);
-
-        const tableAdjustments = document.querySelector('#tableAdjustments tbody');
-        tableAdjustments.innerHTML = clientResults.map((res) => `
-            <tr>
-                <td>${res.name}</td>
-                <td>${formatAdjustment(res.adjustmentMs)}</td>
-                <td>${msToTimeString(res.synchronizedTimeMs)}</td>
-            </tr>
-        `).join('');
-
-        renderRankingTable(
-            document.querySelector('#tableRankingBefore tbody'),
-            rankings.before,
-            (res) => res.sendTimeMs
-        );
-        renderRankingTable(
-            document.querySelector('#tableRankingAfter tbody'),
-            rankings.after,
-            (res) => res.synchronizedSendTimeMs
-        );
-    }
-
-    function buildClientRankings(clientResults, clientsPayload) {
-        const payloadById = new Map(clientsPayload.map((client) => [client.id, client]));
-        const merged = clientResults.map((res) => {
-            const client = payloadById.get(res.id);
-            const sendTimeMs = client?.sentAtMs;
-            return {
-                ...res,
-                sendTimeMs,
-                synchronizedSendTimeMs: Number.isFinite(sendTimeMs) ? sendTimeMs + res.adjustmentMs : null
-            };
-        });
-
-        return {
-            before: [...merged].sort((a, b) => compareOptionalTimes(a.sendTimeMs, b.sendTimeMs)),
-            after: [...merged].sort((a, b) => compareOptionalTimes(a.synchronizedSendTimeMs, b.synchronizedSendTimeMs))
-        };
-    }
-
-    function renderRankingTable(tableBody, ranking, getTimeValue) {
-        tableBody.innerHTML = ranking.map((res, index) => `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${res.name}</td>
-                <td>${formatRankingTime(getTimeValue(res))}</td>
-            </tr>
-        `).join('');
-    }
-
-    function formatRankingTime(ms) {
-        if (!Number.isFinite(ms)) {
-            return '--:--:--';
-        }
-
-        return msToTimeString(ms);
-    }
-
-    function compareOptionalTimes(a, b) {
-        const left = Number.isFinite(a) ? a : Number.POSITIVE_INFINITY;
-        const right = Number.isFinite(b) ? b : Number.POSITIVE_INFINITY;
-        return left - right;
-    }
-
     function showStatus(message, type) {
-        formStatus.textContent = message;
-        formStatus.className = `status-banner ${type}`;
+        elements.formStatus.textContent = message;
+        elements.formStatus.className = `status-banner ${type}`;
     }
 
     function clearStatus() {
-        formStatus.textContent = '';
-        formStatus.className = 'status-banner hidden';
+        elements.formStatus.textContent = '';
+        elements.formStatus.className = 'status-banner hidden';
     }
 
     function setBusyState(isBusy) {
-        syncBtn.disabled = isBusy;
-        syncBtn.textContent = isBusy ? 'Sincronizando...' : 'Sincronizar relógios';
+        elements.syncBtn.disabled = isBusy;
+        elements.syncBtn.textContent = isBusy ? 'Sincronizando...' : 'Sincronizar relógios';
     }
-});
+
+    return elements;
+}
+
+function renderBootstrapError(root, message) {
+    const formStatus = root.getElementById('formStatus');
+
+    if (formStatus) {
+        formStatus.textContent = message;
+        formStatus.className = 'status-banner error';
+        return;
+    }
+
+    const fallback = root.createElement('div');
+    fallback.className = 'status-banner error';
+    fallback.textContent = message;
+    root.body.prepend(fallback);
+}
+
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            initializeApp(document);
+        } catch (error) {
+            console.error('Erro ao inicializar a interface:', error);
+            renderBootstrapError(document, getUserFacingErrorMessage(error));
+        }
+    });
+}

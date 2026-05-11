@@ -7,7 +7,7 @@
     "dev": "tsx src/infrastructure/http/fastify-server.ts",
     "build": "tsc",
     "start": "node dist/infrastructure/http/fastify-server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --import tsx --test $(find src -name '*.test.ts' -print)"
   },
   "keywords": [],
   "author": "",
