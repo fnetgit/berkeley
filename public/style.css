@@ -403,6 +403,8 @@ button:hover {
 }
 
 button.primary {
+    min-height: 52px;
+    padding: 0 24px;
     background: linear-gradient(135deg, var(--accent) 0%, #d18856 100%);
     color: #fff9f4;
     box-shadow: 0 14px 30px rgba(182, 93, 58, 0.24);
