@@ -124,6 +124,41 @@ input {
     font-size: 0.96rem;
 }
 
+.masthead-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.inline-link-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: #25303e;
+    color: #fff7ef;
+    text-decoration: none;
+    font-weight: 800;
+    box-shadow: var(--shadow-soft);
+    transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.inline-link-button:hover {
+    transform: translateY(-1px);
+    background: #1e2733;
+}
+
+.inline-link-copy {
+    color: var(--text-soft);
+    font-size: 0.92rem;
+    line-height: 1.6;
+    max-width: 38ch;
+}
+
 .masthead-side {
     display: grid;
     gap: 14px;
@@ -543,6 +578,54 @@ button.secondary,
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.explain-shell {
+    padding-top: 40px;
+}
+
+.explain-masthead {
+    width: min(1040px, 100%);
+}
+
+.explain-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.explain-card {
+    display: grid;
+    gap: 12px;
+}
+
+.explain-card p {
+    margin: 0;
+    color: var(--text-soft);
+    line-height: 1.7;
+}
+
+.explain-card-wide {
+    grid-column: 1 / -1;
+}
+
+.formula-block {
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: var(--surface-muted);
+    border: 1px solid rgba(79, 57, 34, 0.1);
+}
+
+.formula-block strong {
+    font-family: var(--mono);
+    font-size: 0.98rem;
+}
+
+.explain-list {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--text-soft);
+    line-height: 1.8;
+}
+
 .table-card {
     padding: 18px;
 }
@@ -587,6 +670,7 @@ tbody tr:hover {
 @media (max-width: 1080px) {
     .masthead,
     .workspace-grid,
+    .explain-grid,
     .results-grid,
     .logical-clock-display {
         grid-template-columns: 1fr;

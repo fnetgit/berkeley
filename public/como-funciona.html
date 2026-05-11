@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Como funciona a sincronização de Berkeley</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <main class="app-shell explain-shell">
+        <section class="masthead explain-masthead">
+            <div class="masthead-copy">
+                <p class="eyebrow">Guia rápido</p>
+                <h1>Como o cálculo é feito</h1>
+                <p class="hero-text">
+                    Esta página resume a lógica usada no simulador para calcular o clock lógico global, distribuir os
+                    ajustes e comparar a ordem dos envios antes e depois da sincronização.
+                </p>
+                <div class="masthead-actions">
+                    <a class="inline-link-button" href="/">Voltar ao simulador</a>
+                    <span class="inline-link-copy">Retorne para preencher os nós e testar exemplos práticos.</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="explain-grid">
+            <article class="panel explain-card">
+                <div class="panel-heading">
+                    <div>
+                        <p class="section-kicker">Etapa 1</p>
+                        <h2>Escolha da referência</h2>
+                    </div>
+                </div>
+                <p>
+                    O simulador começa com o horário informado no servidor. Esse valor funciona como ponto de partida
+                    da rodada de sincronização.
+                </p>
+                <p>
+                    Para cada cliente, o sistema compara o horário local com a referência observada. Quando existe hora
+                    de envio, ela também entra na leitura do cenário.
+                </p>
+            </article>
+
+            <article class="panel explain-card">
+                <div class="panel-heading">
+                    <div>
+                        <p class="section-kicker">Etapa 2</p>
+                        <h2>Cálculo do drift</h2>
+                    </div>
+                </div>
+                <p>
+                    O algoritmo mede a diferença entre cada relógio e a referência do servidor. Essa diferença é o
+                    drift observado para cada nó.
+                </p>
+                <div class="formula-block">
+                    <strong>drift = horário do nó - horário de referência</strong>
+                </div>
+                <p>
+                    Depois disso, o simulador calcula a média dos drifts válidos para estimar o novo clock lógico
+                    global.
+                </p>
+            </article>
+
+            <article class="panel explain-card">
+                <div class="panel-heading">
+                    <div>
+                        <p class="section-kicker">Etapa 3</p>
+                        <h2>Novo clock global</h2>
+                    </div>
+                </div>
+                <p>
+                    A média dos desvios é somada ao relógio do servidor. O resultado vira o horário comum que todos os
+                    clientes devem perseguir.
+                </p>
+                <div class="formula-block">
+                    <strong>clock global = clock do servidor + média dos drifts</strong>
+                </div>
+            </article>
+
+            <article class="panel explain-card">
+                <div class="panel-heading">
+                    <div>
+                        <p class="section-kicker">Etapa 4</p>
+                        <h2>Ajuste por cliente</h2>
+                    </div>
+                </div>
+                <p>
+                    Com o novo clock global definido, o simulador calcula quanto cada cliente deve adiantar ou atrasar.
+                </p>
+                <div class="formula-block">
+                    <strong>ajuste = clock global - horário atual do cliente</strong>
+                </div>
+                <p>
+                    Esse valor é o que aparece na tabela de ajustes.
+                </p>
+            </article>
+
+            <article class="panel explain-card explain-card-wide">
+                <div class="panel-heading">
+                    <div>
+                        <p class="section-kicker">Rankings</p>
+                        <h2>Ordem original e ordem após sincronização</h2>
+                    </div>
+                </div>
+                <p>
+                    A ordem original usa os horários de envio informados. Já a ordem após sincronização usa o horário
+                    de envio somado ao ajuste aplicado no respectivo cliente.
+                </p>
+                <p>
+                    Quando um cliente não informa hora de envio, ele continua participando da sincronização, mas não
+                    contribui com um horário explícito para o ranking.
+                </p>
+            </article>
+
+            <article class="panel explain-card explain-card-wide">
+                <div class="panel-heading">
+                    <div>
+                        <p class="section-kicker">Leitura prática</p>
+                        <h2>Como interpretar o resultado</h2>
+                    </div>
+                </div>
+                <ul class="explain-list">
+                    <li>Se o ajuste for positivo, o cliente estava atrasado e precisa adiantar o relógio.</li>
+                    <li>Se o ajuste for negativo, o cliente estava adiantado e precisa atrasar o relógio.</li>
+                    <li>Se os rankings mudarem, isso indica que a sincronização alterou a ordem aparente dos eventos.</li>
+                    <li>Quanto menores os ajustes, mais próximos os relógios já estavam entre si.</li>
+                </ul>
+            </article>
+        </section>
+    </main>
+</body>
+
+</html>
