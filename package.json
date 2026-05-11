@@ -7,7 +7,7 @@
     "dev": "tsx src/infrastructure/http/fastify-server.ts",
     "build": "tsc",
     "start": "node dist/infrastructure/http/fastify-server.js",
-    "test": "node --import tsx --test $(find src -name '*.test.ts' -print)"
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "keywords": [],
   "author": "",

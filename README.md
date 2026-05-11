@@ -55,6 +55,8 @@ npm run build
 npm start
 ```
 
+Observação: `dist/` é um artefato gerado pelo build, não faz parte do código-fonte e não deve ser versionado.
+
 ## Como executar os testes
 
 ```bash
